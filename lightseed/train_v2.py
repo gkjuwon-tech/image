@@ -12,6 +12,7 @@ import time
 
 import numpy as np
 import torch
+from torch.utils.checkpoint import checkpoint
 from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
 
 from .developer import DeveloperV1, SplatEncoder
@@ -54,9 +55,18 @@ def main():
     opt = torch.optim.Adam(params, lr=3e-4)
     sched = torch.optim.lr_scheduler.LambdaLR(opt, lambda s: 0.5 * (1 + math.cos(math.pi * min(s / args.steps, 1))))
 
+    # only the active scene's teacher lives on the GPU; recompute activations in backward to fit in 24GB
+    for sc in scenes:
+        sc.teacher = {k: v.cpu().pin_memory() for k, v in sc.teacher.items()}
+
+    def on_gpu(sp):
+        return {k: v.to(dev, non_blocking=True) for k, v in sp.items()}
+
     def grow(sc):
-        lat = enc(sc.teacher, sc.coarse, sc.inv)
-        sp, _, _ = model(sc.coarse, lat, 0, sc.nbr)
+        fine = on_gpu(sc.teacher)
+        lat = checkpoint(enc, fine, sc.coarse, sc.inv, use_reentrant=False)
+        del fine
+        sp, _, _ = checkpoint(model, sc.coarse, lat, 0, sc.nbr, use_reentrant=False)
         return sp, lat
 
     t0 = time.time()
@@ -82,9 +92,12 @@ def main():
     with torch.no_grad():
         for i, sc in enumerate(scenes):
             _, lat = grow(sc)
+            sc.teacher = on_gpu(sc.teacher)  # evaluate() renders the teacher too
             tag = "train" if i in train_ids else "holdout"
             results[sc.name if tag == "train" else f"{sc.name}_zeroshot"] = evaluate(
                 model, sc, lat, 1, lpips, dev, args.out, tag)
+            sc.teacher = {k: v.cpu() for k, v in sc.teacher.items()}
+            torch.cuda.empty_cache()
     torch.save({"developer": model.state_dict(), "encoder": enc.state_dict()}, f"{args.out}/lightseed_v2.pt")
     json.dump(results, open(f"{args.out}/results.json", "w"), indent=1)
     print("RESULTS " + json.dumps(results), flush=True)
