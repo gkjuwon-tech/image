@@ -6,15 +6,13 @@ tail = sys.argv[3] if len(sys.argv) > 3 else "20000"
 log = subprocess.run(["bash", os.path.join(os.path.dirname(__file__), "vlogs.sh"), iid, tail],
                      capture_output=True, text=True).stdout
 parts = collections.defaultdict(dict)
-total = {}
 for m in re.finditer(r"@@F (\S+) (\d+) (\d+) (\S+)", log):
     name, i, n, chunk = m.group(1), int(m.group(2)), int(m.group(3)), m.group(4)
-    parts[name][i] = chunk
-    total[name] = n
+    parts[(name, n)][i] = chunk  # key by chunk count so older emissions of the same file don't mix in
 os.makedirs(out, exist_ok=True)
-for name, ch in parts.items():
-    if len(ch) == total[name]:
-        open(os.path.join(out, name), "wb").write(base64.b64decode("".join(ch[i] for i in range(total[name]))))
+for (name, n), ch in sorted(parts.items(), key=lambda kv: kv[0][1]):  # largest emission written last wins
+    if len(ch) == n:
+        open(os.path.join(out, name), "wb").write(base64.b64decode("".join(ch[i] for i in range(n))))
         print("ok", name)
     else:
-        print("incomplete", name, len(ch), "/", total[name])
+        print("incomplete", name, len(ch), "/", n)
