@@ -3,6 +3,7 @@
 # needs HF_TOKEN in the environment (register it as a Vast account env var; never commit it).
 # usage: bash infra/dl3dv_scene.sh <hash> <batch e.g. 2K>
 set -e
+export QT_QPA_PLATFORM=offscreen  # headless COLMAP
 H=$1; B=$2; W=/workspace; D=$W/data/dl3dv/$H
 mkdir -p $W/data/dl3dv && cd $W/data/dl3dv
 if [ ! -e $D/images_4 ]; then
