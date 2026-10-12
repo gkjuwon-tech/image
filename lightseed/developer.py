@@ -139,7 +139,7 @@ class DeveloperV1(nn.Module):
         # bounded edits: a child can't fly away, explode or vanish in one step (v1 collapsed without this)
         off, dls, dop = 1.5 * torch.tanh(off), 2.0 * torch.tanh(dls), 4.0 * torch.tanh(dop)
 
-        local = CORNERS.to(o.device)[None] + off
+        local = CORNERS[:k].to(o.device)[None] + off
         R = quat_to_rot(q)
         means = sp["means"][:, None] + torch.einsum("nij,nkj->nki", R, local * ls.exp()[:, None])
         dq = dq + torch.tensor([1.0, 0, 0, 0], device=o.device)
