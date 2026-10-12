@@ -14,7 +14,7 @@ fi
 cd $W/repo && python -m lightseed.dl3dv_to_colmap $D
 cd $D && rm -rf db.db sparse && mkdir -p sparse/0
 colmap feature_extractor --database_path db.db --image_path images --ImageReader.single_camera 1 \
-  --ImageReader.camera_model OPENCV --ImageReader.camera_params "$(cut -d' ' -f5- sparse_known/cameras.txt)" \
+  --ImageReader.camera_model OPENCV --ImageReader.camera_params "$(cut -d' ' -f5- sparse_known/cameras.txt | tr ' ' ',')" \
   --SiftExtraction.use_gpu 0 > colmap.log 2>&1
 colmap sequential_matcher --database_path db.db --SiftMatching.use_gpu 0 >> colmap.log 2>&1
 python $W/repo/infra/colmap_ids.py db.db sparse_known
