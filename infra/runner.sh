@@ -3,6 +3,7 @@
 # and runs every new jobs/*.sh once, streaming output to stdout (read via the Vast logs API).
 REPO=https://github.com/gkjuwon-tech/image
 BRANCH=${BRANCH:-ccr-4af9c5c9-nu34xh}
+JOBS_DIR=${JOBS_DIR:-jobs}  # each GPU box watches its own job folder
 W=/workspace
 mkdir -p $W/done $W/logs
 command -v git >/dev/null || (apt-get update -qq && apt-get install -y -qq git curl >/dev/null)
@@ -15,7 +16,7 @@ while true; do
     git -C $W/repo fetch -q origin $BRANCH && git -C $W/repo reset -q --hard FETCH_HEAD
     last=$sha
     echo "[runner] at ${sha:0:7}"
-    for j in $(ls $W/repo/jobs/*.sh 2>/dev/null | sort); do
+    for j in $(ls $W/repo/$JOBS_DIR/*.sh 2>/dev/null | sort); do
       n=$(basename $j .sh)
       [ -e $W/done/$n ] && continue
       touch $W/done/$n
