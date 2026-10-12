@@ -102,6 +102,7 @@ class DeveloperV1(nn.Module):
         d_self = 3 + 4 + 1 + 3 + latent
         self.nbr = nn.Sequential(nn.Linear(3 + 3 + latent, 128), nn.SiLU(), nn.Linear(128, 128))
         self.per_child = 3 + 3 + 4 + 1 + 3 + sh_rest * 3 + latent
+        self.norm = nn.LayerNorm(d_self + 128 + noise_dim + 16)
         self.net = nn.Sequential(
             nn.Linear(d_self + 128 + noise_dim + 16, width), nn.SiLU(),
             nn.Linear(width, width), nn.SiLU(),
@@ -126,14 +127,16 @@ class DeveloperV1(nn.Module):
         size = ls.exp().max(-1).values
         if nbr_idx is None:
             nbr_idx = self.knn(sp["means"].detach(), self.n_nbr)
-        rel = (sp["means"][nbr_idx] - sp["means"][:, None]) / size[:, None, None]
+        rel = ((sp["means"][nbr_idx] - sp["means"][:, None]) / size[:, None, None]).clamp(-8, 8) / 8
         nf = torch.cat([rel, sp["sh0"][nbr_idx][:, :, 0], lat[nbr_idx]], -1)
         ctx = self.nbr(nf).max(1).values
         z = self.noise(sp["means"], size, level)
         lv = self.level_emb(torch.full((n,), level, device=ls.device, dtype=torch.long))
         x = torch.cat([ls, q, sp["opacities"][:, None], sp["sh0"][:, 0], lat, ctx, z, lv], -1)
-        o = self.net(x).view(n, k, self.per_child)
+        o = self.net(self.norm(x)).view(n, k, self.per_child)
         off, dls, dq, dop, dsh0, dshN, dlat = o.split([3, 3, 4, 1, 3, self.sh_rest * 3, self.latent], -1)
+        # bounded edits: a child can't fly away, explode or vanish in one step (v1 collapsed without this)
+        off, dls, dop = 1.5 * torch.tanh(off), 2.0 * torch.tanh(dls), 4.0 * torch.tanh(dop)
 
         local = CORNERS.to(o.device)[None] + off
         R = quat_to_rot(q)

@@ -67,6 +67,7 @@ def main():
     ap.add_argument("--ratio", type=int, default=64)
     ap.add_argument("--levels", type=int, default=2)
     ap.add_argument("--lpips_w", type=float, default=0.1)
+    ap.add_argument("--lpips_start", type=int, default=2000, help="photo loss only before this step")
     args = ap.parse_args()
     dev = "cuda"
     torch.manual_seed(0)
@@ -86,28 +87,33 @@ def main():
     lpips = LearnedPerceptualImagePatchSimilarity(net_type="vgg", normalize=True).to(dev)
 
     opt = torch.optim.Adam([{"params": model.parameters(), "lr": 3e-4},
-                            {"params": [lats[i] for i in train_ids], "lr": 3e-3}])
+                            {"params": [lats[i] for i in train_ids], "lr": 1e-3}])
     sched = torch.optim.lr_scheduler.LambdaLR(opt, lambda s: 0.5 * (1 + math.cos(math.pi * min(s / args.steps, 1))))
     t0 = time.time()
 
-    def step_loss(i):
+    def step_loss(i, step=10**9):
         sc = scenes[i]
         gt, c2w, K = sc.item(sc.train, np.random.randint(len(sc.train)), dev)
         out = render(develop(model, sc.coarse, lats[i], sc.nbr, args.levels), c2w, K, gt.shape[1], gt.shape[0])
         loss = photo_loss(out, gt)
-        if args.lpips_w > 0:
+        if args.lpips_w > 0 and step >= args.lpips_start:
             a, b = crop(out.clamp(0, 1), gt)
             loss = loss + args.lpips_w * lpips(a.permute(2, 0, 1)[None], b.permute(2, 0, 1)[None])
         return loss
 
     for step in range(args.steps):
-        loss = step_loss(train_ids[step % len(train_ids)])
+        loss = step_loss(train_ids[step % len(train_ids)], step)
         opt.zero_grad(set_to_none=True)
         loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         opt.step()
         sched.step()
-        if step % 1000 == 0:
-            print(f"step {step} loss {loss.item():.4f} {time.time() - t0:.0f}s", flush=True)
+        if step % 250 == 0:
+            with torch.no_grad():
+                sp = develop(model, scenes[0].coarse if 0 in train_ids else scenes[1].coarse,
+                             lats[0] if 0 in train_ids else lats[1], (scenes[0] if 0 in train_ids else scenes[1]).nbr, args.levels)
+                print(f"step {step} loss {loss.item():.4f} opacity {torch.sigmoid(sp['opacities']).mean():.3f} "
+                      f"logscale {sp['scales'].mean():.2f} {time.time() - t0:.0f}s", flush=True)
 
     results = {s.name: evaluate(model, s, lats[i], args.levels, lpips, dev, args.out, "train")
                for i, s in enumerate(scenes) if i in train_ids}
