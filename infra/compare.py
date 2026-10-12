@@ -4,7 +4,7 @@ import glob, os, sys
 import numpy as np
 from PIL import Image
 
-rd, step, out = sys.argv[1], int(sys.argv[2]), sys.argv[3]
+rd, step, out = sys.argv[1], sys.argv[2], sys.argv[3]
 nv = int(sys.argv[4]) if len(sys.argv) > 4 else 3
 os.makedirs(out, exist_ok=True)
 files = sorted(glob.glob(f"{rd}/val_step{step}_*.png"))
