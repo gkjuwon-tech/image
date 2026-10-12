@@ -10,7 +10,7 @@ train() { local name=$1; shift; (cd $W/gsplat/examples && python simple_trainer.
 report() {
   local name=$1 dir=$2 step=$3
   python infra/compare.py $dir/renders $step $W/cmp/$name 3 > $W/cmp/$name.txt
-  python infra/emit.py $W/cmp/$name/val_step${step}_0016_zoom.jpg
+  python infra/emit.py $W/cmp/$name/${name}_val_step${step}_0016_zoom.jpg
   python infra/realness.py gt=$dir/renders/val_step${step}_0016.png:left $name=$dir/renders/val_step${step}_0016.png:right
   cat $W/cmp/$name.txt
   echo "METRICS $name $(cat $dir/stats/val_step$step.json)"

@@ -11,6 +11,6 @@ python -m lightseed.train_v0 --data $W/data/mip360 --holdout bicycle --out $T/li
 for s in bicycle garden; do
   tag=train; [ $s = bicycle ] && tag=holdout
   python infra/compare.py $T/lightseed_v0/$s/renders $tag $W/cmp/ls0_$s 3 > /dev/null
-  python infra/emit.py $W/cmp/ls0_$s/val_step${tag}_0016_zoom.jpg
+  python infra/emit.py $W/cmp/ls0_$s/ls0_${s}_val_step${tag}_0016_zoom.jpg
 done
 grep -E 'teacher|developer params|EVAL' $W/logs/018-train.log

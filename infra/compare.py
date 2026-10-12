@@ -31,7 +31,7 @@ for p in files[:: max(1, len(files) // nv)][:nv]:
     full = Image.new("RGB", (w*2 + 8, gt.shape[0]), "white")
     full.paste(Image.fromarray(gt), (0, 0)); full.paste(Image.fromarray(rn), (w + 8, 0))
     full.thumbnail((2400, 2400))
-    stem = os.path.splitext(os.path.basename(p))[0]
+    stem = os.path.basename(os.path.normpath(out)) + "_" + os.path.splitext(os.path.basename(p))[0]  # unique per run
     full.save(f"{out}/{stem}_full.jpg", quality=90)
     sheet = Image.new("RGB", (rows[0].width, rows[0].height * 2 + 8), "white")
     sheet.paste(rows[0], (0, 0)); sheet.paste(rows[1], (0, rows[0].height + 8))
