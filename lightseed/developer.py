@@ -113,7 +113,8 @@ class DeveloperV1(nn.Module):
         nn.init.zeros_(self.net[-1].bias)
 
     @staticmethod
-    def knn(xyz, n, chunk=8192):
+    def knn(xyz, n, chunk=None):
+        chunk = chunk or max(256, int(2e8 // len(xyz)))  # keep the distance block ~800MB
         out = []
         for i in range(0, len(xyz), chunk):
             d = torch.cdist(xyz[i:i + chunk], xyz)
