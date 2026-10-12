@@ -52,6 +52,7 @@ class Scene:
         self.teacher = load_ckpt(ckpt, dev)
         n = len(self.teacher["means"])
         self.coarse, voxel = coarsen_to(self.teacher, n // ratio)
+        self.voxel = voxel
         print(f"[{name}] teacher {n} -> coarse {len(self.coarse['means'])} (voxel {voxel:.4f}), "
               f"train {len(self.train)} test {len(self.test)}", flush=True)
         self.cache = {}

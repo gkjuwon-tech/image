@@ -157,3 +157,27 @@ class DeveloperV1(nn.Module):
         sib = torch.arange(n * k, device=o.device).view(n, k)
         child_nbr = sib[:, None, :].expand(n, k, k).reshape(n * k, k)
         return children, child_lat, child_nbr
+
+
+class SplatEncoder(nn.Module):
+    """Reads the fine splats inside each coarse voxel and writes that voxel's latent DNA (set encoder:
+    per-splat MLP, then max+mean pooling per voxel). Lets v2 learn what to keep instead of guessing it."""
+
+    def __init__(self, latent=32, sh_rest=15, width=128):
+        super().__init__()
+        d = 3 + 3 + 4 + 1 + 3 + sh_rest * 3
+        self.point = nn.Sequential(nn.Linear(d, width), nn.SiLU(), nn.Linear(width, width), nn.SiLU())
+        self.head = nn.Sequential(nn.Linear(2 * width, width), nn.SiLU(), nn.Linear(width, latent))
+
+    def forward(self, fine, coarse, inv):
+        pm, pls = coarse["means"][inv], coarse["scales"][inv]
+        R = quat_to_rot(F.normalize(coarse["quats"], dim=-1))[inv]
+        rel = torch.einsum("nji,nj->ni", R, fine["means"] - pm) / pls.exp()  # child offset in parent frame
+        x = torch.cat([rel.clamp(-8, 8) / 8, fine["scales"] - pls, F.normalize(fine["quats"], dim=-1),
+                       fine["opacities"][:, None], fine["sh0"][:, 0], fine["shN"].flatten(1)], -1)
+        h = self.point(x)
+        M = len(coarse["means"])
+        mx = torch.full((M, h.shape[1]), -1e4, device=h.device).index_reduce_(0, inv, h, "amax", include_self=True)
+        cnt = torch.zeros(M, device=h.device).index_add_(0, inv, torch.ones_like(inv, dtype=h.dtype)).clamp_min(1)
+        mean = torch.zeros_like(mx).index_add_(0, inv, h) / cnt[:, None]
+        return self.head(torch.cat([mx, mean], -1))
