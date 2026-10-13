@@ -16,3 +16,9 @@ PSNR on held-out test views vs real photos. "highpass" = fine-detail energy of t
 
 Diagnosis after v3: uniform voxels hold 1..hundreds of splats but the developer always grows 7-8, so dense grass and
 foliage are starved. v4 switches to Z-order groups of exactly 8 with slot-wise supervision.
+| v4 (031) | Z-order groups of exactly 8, slot-wise loss | 20.39 | 19.89 (zero-shot, best) | 50% | slot loss plateaus at 1.83 |
+
+Diagnosis after v4: v0-v4 all regress ONE answer. Fine texture is high-entropy, so the best single answer is the
+average of plausible ones = blur, whatever the loss. v5 makes the developer generative (flow matching over the 8
+children), starting from world-anchored noise so sampled detail stays identical across views. Success = highpass and
+LPIPS up (PSNR may not rise: it samples plausible detail, not the exact original).
