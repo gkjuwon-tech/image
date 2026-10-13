@@ -12,3 +12,7 @@ PSNR on held-out test views vs real photos. "highpass" = fine-detail energy of t
 | v1.1 (025) | bounded edits, LayerNorm, grad clip | 20.92 | 17.90 (fitted) | 24% | stable, still blur |
 | c8 (026) | 8x merge, 1 level | 23.83 | 20.57 (fitted) | 48% | shapes back, out of focus |
 | v2 (028) | set encoder writes latents | 22.31 | 19.27 (zero-shot) | 39% | zero-shot works, not sharper |
+| v3 (030) | real representative coarse + teacher zoom views + per-voxel set loss | 21.62 | 18.77 (zero-shot) | 50% | sharper edges, lower PSNR; loss flat after 1.5k |
+
+Diagnosis after v3: uniform voxels hold 1..hundreds of splats but the developer always grows 7-8, so dense grass and
+foliage are starved. v4 switches to Z-order groups of exactly 8 with slot-wise supervision.
