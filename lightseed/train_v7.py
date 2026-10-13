@@ -87,6 +87,7 @@ def main():
     ap.add_argument("--steps", type=int, default=12000)
     ap.add_argument("--latent", type=int, default=128)
     ap.add_argument("--k", type=int, default=8, help="children per parent (compression ratio of this level)")
+    ap.add_argument("--eval_scenes", nargs="*", default=None)
     ap.add_argument("--slot_w", type=float, default=4.0)
     ap.add_argument("--photo_every", type=int, default=4)
     ap.add_argument("--lpips_w", type=float, default=0.1)
@@ -163,6 +164,8 @@ def main():
 
     results = {}
     for i, sc in enumerate(scenes):
+        if args.eval_scenes and sc.name not in args.eval_scenes:
+            continue
         tag = "train" if i in train_ids else "holdout"
         results[sc.name if tag == "train" else f"{sc.name}_zeroshot"] = evaluate(grow, sc, lpips, dev, args.out, tag)
         torch.cuda.empty_cache()
