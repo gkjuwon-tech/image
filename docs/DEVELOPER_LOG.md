@@ -27,3 +27,20 @@ LPIPS up (PSNR may not rise: it samples plausible detail, not the exact original
 
 Lesson after v5/v6: randomness in splat-parameter space is not texture on screen. Sharp detail has to be learned
 through the renderer (screen-space losses). Next: v8 = v7 restorer + patch discriminator on zoomed renders.
+
+## Status when paused
+
+Both GPU boxes were paused (stopped, disks kept) at the user's call. v7 (window transformer, 8x) was still training;
+the 2x restorer (plan A) never started.
+
+What worked:
+- Reconstruction (photo -> splats -> photo): bicycle PSNR 25.9 (above the original 3DGS paper), 87% fine detail with
+  pose refinement. DL3DV parks via the factory: PSNR 27-29.6, LPIPS 0.05-0.08.
+- The developer recovers layout and shapes from 8x-coarsened scenes, also zero-shot on an unseen scene (v4: 19.9).
+
+What did not:
+- Fine detail after 8x coarsening stayed at ~40-50% of the real photo's high-frequency energy across v0-v4
+  (regression = average = blur). Generating splat parameters directly (v5, v6) produced haze/speckle.
+
+Untested next steps: 2x final restorer + cascade of latent painters; screen-space adversarial fine-tuning (v8);
+hybrid neural rendering (3D structure + 2D texture network).
