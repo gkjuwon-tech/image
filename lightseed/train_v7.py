@@ -36,6 +36,13 @@ class WindowRestorer(nn.Module):
                                                                 norm_first=True, activation="gelu")
                                      for _ in range(layers)])
         self.head = nn.Sequential(nn.LayerNorm(d), nn.Linear(d, 8 * D))
+        # start from a sane split: children on the parent's cube corners (+-0.5 sigma), half the parent's size
+        nn.init.zeros_(self.head[1].weight)
+        b = torch.zeros(8, D)
+        corners = torch.tensor([[x, y, z] for x in (-1, 1) for y in (-1, 1) for z in (-1, 1)], dtype=torch.float32)
+        b[:, 0:3] = torch.atanh(corners * 0.5 / 8)
+        b[:, 3:6] = math.atanh((-math.log(2) / 6 + 1) / 0.55 - 1)  # dls = -log 2 under the bounded map below
+        self.head[1].bias.data = b.flatten()
 
     def forward(self, parent, lat):
         G = len(lat)
@@ -57,7 +64,9 @@ class WindowRestorer(nn.Module):
             h = checkpoint(layer, h, use_reentrant=False)
         out = self.head(h).view(-1, 8, D)[:G]
         pos_, dls, q, op, sh0, shN = out.split([3, 3, 4, 1, 3, 45], -1)
-        return torch.cat([torch.tanh(pos_), torch.tanh(dls), F.normalize(q + torch.tensor([1.0, 0, 0, 0], device=q.device), dim=-1),
+        # dls (normalized by 6) bounded to [-1, 0.1]: a child is never far larger than its parent (that blew up
+        # the rasterizer's tile lists in the first v7 run)
+        return torch.cat([torch.tanh(pos_), (torch.tanh(dls) + 1) * 0.55 - 1, F.normalize(q + torch.tensor([1.0, 0, 0, 0], device=q.device), dim=-1),
                           torch.sigmoid(op), sh0, shN], -1)
 
 
