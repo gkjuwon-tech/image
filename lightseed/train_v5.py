@@ -171,7 +171,7 @@ def main():
             for s in range(n):
                 t = torch.full((len(x),), s / n, device=dev)
                 x = x + flow(x, t, c) / n
-            out.append(x * sd + mu)
+            out.append(x.clamp(-3, 3) * sd + mu)  # drop sampling outliers (huge/flat splats -> haze)
         return features_to_splats(torch.cat(out).view(G, 8, D), sc.coarse)
 
     lpips = LearnedPerceptualImagePatchSimilarity(net_type="vgg", normalize=True).to(dev)
