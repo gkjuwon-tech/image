@@ -34,9 +34,9 @@ def child_features(rel):
 class GroupEncoder(nn.Module):
     """Ordered 8 children (in the parent's frame) -> latent."""
 
-    def __init__(self, latent=64, d=59, width=512):
+    def __init__(self, latent=64, d=59, width=512, k=8):
         super().__init__()
-        self.net = nn.Sequential(nn.Linear(8 * d, width), nn.SiLU(), nn.Linear(width, width), nn.SiLU(),
+        self.net = nn.Sequential(nn.Linear(k * d, width), nn.SiLU(), nn.Linear(width, width), nn.SiLU(),
                                  nn.Linear(width, latent))
 
     def forward(self, feats):

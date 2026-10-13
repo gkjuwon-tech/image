@@ -71,7 +71,7 @@ class FlowDeveloper(nn.Module):
 
 
 def features_to_splats(x, parent):
-    """Inverse of child_features: [G, 8, 59] (unnormalized) -> splat dict in world space."""
+    """Inverse of child_features: [G, k, 59] (unnormalized) -> splat dict in world space."""
     G = len(parent["means"])
     pos, dls, q, op, sh0, shN = x.split([3, 3, 4, 1, 3, 45], -1)
     R = quat_to_rot(F.normalize(parent["quats"], dim=-1))

@@ -29,19 +29,20 @@ WIN = 64
 
 
 class WindowRestorer(nn.Module):
-    def __init__(self, latent=128, d=256, layers=4, heads=8):
+    def __init__(self, latent=128, d=256, layers=4, heads=8, k=8):
         super().__init__()
+        self.k = k
         self.inp = nn.Linear(11 + 3 + 1 + latent, d)
         self.layers = nn.ModuleList([nn.TransformerEncoderLayer(d, heads, 4 * d, dropout=0.0, batch_first=True,
                                                                 norm_first=True, activation="gelu")
                                      for _ in range(layers)])
-        self.head = nn.Sequential(nn.LayerNorm(d), nn.Linear(d, 8 * D))
+        self.head = nn.Sequential(nn.LayerNorm(d), nn.Linear(d, k * D))
         # start from a sane split: children on the parent's cube corners (+-0.5 sigma), half the parent's size
         nn.init.zeros_(self.head[1].weight)
-        b = torch.zeros(8, D)
-        corners = torch.tensor([[x, y, z] for x in (-1, 1) for y in (-1, 1) for z in (-1, 1)], dtype=torch.float32)
+        b = torch.zeros(k, D)
+        corners = torch.tensor([[x, y, z] for x in (-1, 1) for y in (-1, 1) for z in (-1, 1)], dtype=torch.float32)[:k]
         b[:, 0:3] = torch.atanh(corners * 0.5 / 8)
-        b[:, 3:6] = math.atanh((-math.log(2) / 6 + 1) / 0.55 - 1)  # dls = -log 2 under the bounded map below
+        b[:, 3:6] = math.atanh((-math.log(k) / 3 / 6 + 1) / 0.55 - 1)  # each child ~ 1/k of the parent volume
         self.head[1].bias.data = b.flatten()
 
     def forward(self, parent, lat):
@@ -62,7 +63,7 @@ class WindowRestorer(nn.Module):
         h = self.inp(torch.cat([x[..., :11], (pos - c) / ext, rel_size, x[..., 11:]], -1))
         for layer in self.layers:
             h = checkpoint(layer, h, use_reentrant=False)
-        out = self.head(h).view(-1, 8, D)[:G]
+        out = self.head(h).view(-1, WIN, self.k, D).flatten(0, 1)[:G]
         pos_, dls, q, op, sh0, shN = out.split([3, 3, 4, 1, 3, 45], -1)
         # dls (normalized by 6) bounded to [-1, 0.1]: a child is never far larger than its parent (that blew up
         # the rasterizer's tile lists in the first v7 run)
@@ -85,6 +86,7 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--steps", type=int, default=12000)
     ap.add_argument("--latent", type=int, default=128)
+    ap.add_argument("--k", type=int, default=8, help="children per parent (compression ratio of this level)")
     ap.add_argument("--slot_w", type=float, default=4.0)
     ap.add_argument("--photo_every", type=int, default=4)
     ap.add_argument("--lpips_w", type=float, default=0.1)
@@ -95,15 +97,15 @@ def main():
     np.random.seed(0)
     os.makedirs(args.out, exist_ok=True)
 
-    model = WindowRestorer(latent=args.latent).to(dev)
-    enc = GroupEncoder(latent=args.latent).to(dev)
+    model = WindowRestorer(latent=args.latent, k=args.k).to(dev)
+    enc = GroupEncoder(latent=args.latent, k=args.k).to(dev)
     scenes = []
     for t in args.teachers:
         name, ckpt = t.split("=")
         sc = Scene(name, f"{args.data}/{name}", ckpt, 64, dev)
-        sc.teacher = group8(sc.teacher)
-        sc.coarse = merge_groups(sc.teacher)
-        sc.x = child_features(to_parent_frame(sc.teacher, sc.coarse))
+        sc.teacher = group8(sc.teacher, args.k)
+        sc.coarse = merge_groups(sc.teacher, args.k)
+        sc.x = child_features(to_parent_frame(sc.teacher, sc.coarse, args.k))
         sc.teacher = {k: v.cpu().pin_memory() for k, v in sc.teacher.items()}
         scenes.append(sc)
         torch.cuda.empty_cache()
