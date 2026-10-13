@@ -22,3 +22,4 @@ Diagnosis after v4: v0-v4 all regress ONE answer. Fine texture is high-entropy, 
 average of plausible ones = blur, whatever the loss. v5 makes the developer generative (flow matching over the 8
 children), starting from world-anchored noise so sampled detail stays identical across views. Success = highpass and
 LPIPS up (PSNR may not rise: it samples plausible detail, not the exact original).
+| v5 preview (035) | flow matching, 4k steps, no render loss | 11.83 | 15.01 (zero-shot) | 31% | haze + long streaks: sampled outlier splats; sharp lines appear but structure lost |
