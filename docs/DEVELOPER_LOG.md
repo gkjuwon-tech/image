@@ -23,3 +23,7 @@ average of plausible ones = blur, whatever the loss. v5 makes the developer gene
 children), starting from world-anchored noise so sampled detail stays identical across views. Success = highpass and
 LPIPS up (PSNR may not rise: it samples plausible detail, not the exact original).
 | v5 preview (035) | flow matching, 4k steps, no render loss | 11.83 | 15.01 (zero-shot) | 31% | haze + long streaks: sampled outlier splats; sharp lines appear but structure lost |
+| v6 (037) | frozen v4 mean + flow-sampled residual | 17.57 | 17.63 (zero-shot) | 45% | worse than v4: flow found little structure (loss 0.81); random residuals in splat space = speckle, not texture |
+
+Lesson after v5/v6: randomness in splat-parameter space is not texture on screen. Sharp detail has to be learned
+through the renderer (screen-space losses). Next: v8 = v7 restorer + patch discriminator on zoomed renders.
