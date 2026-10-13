@@ -2,7 +2,7 @@
 . jobs/lib.inc
 true
 sleep 20
-wait_for 033-lightseed-v5-preview; gpu_lock
+wait_for 035-lightseed-v5-preview4k; gpu_lock
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 T=$W/results
 python -m lightseed.train_v5 --data $W/data/mip360 --holdout bicycle --out $T/lightseed_v5 --steps 30000 \
