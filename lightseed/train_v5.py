@@ -97,6 +97,7 @@ def main():
     ap.add_argument("--batch", type=int, default=32768)
     ap.add_argument("--latent", type=int, default=64)
     ap.add_argument("--sample_steps", type=int, default=24)
+    ap.add_argument("--eval_scenes", nargs="*", default=None, help="evaluate only these scenes (quick preview)")
     args = ap.parse_args()
     dev = "cuda"
     torch.manual_seed(0)
@@ -176,6 +177,8 @@ def main():
     lpips = LearnedPerceptualImagePatchSimilarity(net_type="vgg", normalize=True).to(dev)
     results = {}
     for i, sc in enumerate(scenes):
+        if args.eval_scenes and sc.name not in args.eval_scenes:
+            continue
         tag = "train" if i in train_ids else "holdout"
         results[sc.name if tag == "train" else f"{sc.name}_zeroshot"] = evaluate(grow, sc, lpips, dev, args.out, tag)
         torch.cuda.empty_cache()
