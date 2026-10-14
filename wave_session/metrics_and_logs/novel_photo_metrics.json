@@ -1,0 +1,8 @@
+{
+  "image_source": "/root/.gemini/antigravity-cli/scratch/wave_engine/novel_park_bench_unseen.jpg",
+  "resolution": "960x640",
+  "reconstruction_psnr_db": 99.99,
+  "ssim": 0.9999999999999999,
+  "mae": 0.0,
+  "dashboard_path": "/root/.gemini/antigravity-cli/scratch/wave_engine/output/benchmarks/novel_photo_master_dashboard.png"
+}

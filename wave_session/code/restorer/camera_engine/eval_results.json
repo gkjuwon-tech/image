@@ -1,0 +1,12 @@
+{
+  "rot_mean_deg": 15.639428141415118,
+  "rot_max_deg": 43.32756423950195,
+  "trans_mean_m": 3.4258515441417696,
+  "trans_max_m": 6.561328887939453,
+  "acc_mean_m_s2": 0.2964032250829041,
+  "jerk_mean_m_s3": 0.4639820468053222,
+  "mean_latency_ms": 13.68976656935717,
+  "frame_throughput_fps": 21914.179360188104,
+  "obstacle_violation_pct": 0.0,
+  "num_test_samples": 100
+}
